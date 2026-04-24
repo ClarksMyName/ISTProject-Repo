@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Yoga H'om • Welcome</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
@@ -19,6 +20,10 @@
       <input type="password" name="password" placeholder="Password" required>
       <button class="btn btn--primary" type="submit">Login</button>
     </form>
+
+    <p style="margin-top: 12px;">
+      <a href="/htmls/forgot-password.html">Forgot password?</a>
+    </p>
 
     <hr>
 
@@ -39,6 +44,8 @@
         message = "Invalid username or password.";
       } else if (error === "missing_fields") {
         message = "Please fill in all required fields.";
+      } else if (error === "account_inactive") {
+        message = "This account is inactive. Please contact an administrator.";
       }
 
       if (message) {

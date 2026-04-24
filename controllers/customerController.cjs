@@ -1,7 +1,34 @@
 const Customer = require("../models/customerModel.cjs");
+const { syncCustomerPackageStatus } = require("../utils/packageStatus.cjs");
+const bcrypt = require("bcrypt");
+const User = require("../models/userModel.cjs");
+
+function getRole(req) {
+  return req.session?.user?.role || null;
+}
+
+function isLoggedIn(req) {
+  return !!req.session?.user;
+}
+
+function canManageCustomers(role) {
+  return ["admin", "staff", "instructor"].includes(role);
+}
+
+async function syncAndSave(customer) {
+  if (customer && syncCustomerPackageStatus(customer)) {
+    await customer.save();
+  }
+  return customer;
+}
 
 exports.add = async (req, res) => {
   try {
+    const role = getRole(req);
+    if (!canManageCustomers(role)) {
+      return res.status(403).json({ message: "Not allowed" });
+    }
+
     const {
       customerId,
       firstName,
@@ -10,15 +37,37 @@ exports.add = async (req, res) => {
       phone,
       address,
       classBalance,
-      senior
+      senior,
+      role: newUserRole = "member",
+      username,
+      password,
     } = req.body;
 
-    // Basic validation
     if (!firstName || !lastName || !email || !phone) {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    // Create a new customer document
+    if (!username || !password) {
+      return res.status(400).json({
+        message: "Username and temporary password are required for every customer account"
+      });
+    }
+
+    if (!["admin", "staff", "instructor", "member"].includes(newUserRole)) {
+      return res.status(400).json({ message: "Invalid role" });
+    }
+
+    if (newUserRole !== "member" && role !== "admin") {
+      return res.status(403).json({
+        message: "Only admins can create admin, staff, or instructor accounts"
+      });
+    }
+
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+      return res.status(400).json({ message: "Username already exists" });
+    }
+
     const newCustomer = new Customer({
       customerId,
       firstName,
@@ -27,32 +76,49 @@ exports.add = async (req, res) => {
       phone,
       address,
       classBalance,
-      senior
+      senior,
     });
 
-    // Save to database
     await newCustomer.save();
-    res.status(201).json({ message: "Customer added successfully", customer: newCustomer });
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const createdUser = await User.create({
+      username,
+      passwordHash,
+      role: newUserRole,
+      customerId,
+    });
+
+    res.status(201).json({
+      message: "Customer added successfully",
+      customer: newCustomer,
+      userCreated: true,
+      user: {
+        username: createdUser.username,
+        role: createdUser.role,
+        customerId: createdUser.customerId,
+      },
+    });
   } catch (err) {
-    console.error("Error adding customer:", err.message);
-    res.status(500).json({ message: "Failed to add customer", error: err.message });
+    console.error("Error adding customer:", err);
+    res.status(500).json({ message: err.message || "Failed to add customer" });
   }
 };
 
 exports.getNextId = async (req, res) => {
   try {
-    const lastCustomer = await Customer.find({})
-      .sort({ customerId: -1 })
-      .limit(1);
+    const lastCustomer = await Customer.find({}).sort({ customerId: -1 }).limit(1);
 
     let maxNumber = 1;
     if (lastCustomer.length > 0) {
       const lastId = lastCustomer[0].customerId;
       const match = lastId.match(/\d+$/);
       if (match) {
-        maxNumber = parseInt(match[0]) + 1;
+        maxNumber = parseInt(match[0], 10) + 1;
       }
     }
+
     const nextId = `Y${String(maxNumber).padStart(3, "0")}`;
     res.json({ nextId });
   } catch (e) {
@@ -61,39 +127,97 @@ exports.getNextId = async (req, res) => {
 };
 
 exports.search = async (req, res) => {
-  const q = req.query.q || "";
+  try {
+    if (!isLoggedIn(req)) {
+      return res.status(401).json({ message: "Not logged in" });
+    }
 
-  const results = await Customer.find({
-    $or: [
-      { firstName: new RegExp(q, "i") },
-      { lastName: new RegExp(q, "i") },
-      { email: new RegExp(q, "i") },
-      { phone: new RegExp(q, "i") }
-    ]
-  });
+    const role = getRole(req);
 
-  res.json(results);
+    if (role === "member") {
+      const me = await Customer.findOne({ customerId: req.session.user.customerId });
+      await syncAndSave(me);
+      return res.json(me ? [me] : []);
+    }
+
+    const q = req.query.q || "";
+    const regex = new RegExp(q, "i");
+
+    const results = await Customer.find({
+      $or: [
+        { customerId: regex },
+        { firstName: regex },
+        { lastName: regex },
+        { email: regex },
+        { phone: regex },
+      ],
+    });
+
+    await Promise.all(results.map(syncAndSave));
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to search customers", error: err.message });
+  }
 };
 
 exports.getOne = async (req, res) => {
-  const customer = await Customer.findOne({ customerId: req.params.customerId });
-  res.json(customer);
+  try {
+    if (!isLoggedIn(req)) {
+      return res.status(401).json({ message: "Not logged in" });
+    }
+
+    const role = getRole(req);
+    const requestedId = req.params.customerId;
+
+    if (role === "member" && requestedId !== req.session.user.customerId) {
+      return res.status(403).json({ message: "Not allowed" });
+    }
+
+    const customer = await Customer.findOne({ customerId: requestedId });
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    await syncAndSave(customer);
+    res.json(customer);
+  } catch (err) {
+    res.status(500).json({ message: "Failed to load customer", error: err.message });
+  }
 };
 
 exports.update = async (req, res) => {
-  const updated = await Customer.findOneAndUpdate(
-    { customerId: req.params.customerId },
-    req.body,
-    { new: true }
-  );
+  try {
+    const role = getRole(req);
+    if (!canManageCustomers(role)) {
+      return res.status(403).json({ message: "Not allowed" });
+    }
 
-  res.json({ message: "Updated", customer: updated });
+    const updated = await Customer.findOneAndUpdate(
+      { customerId: req.params.customerId },
+      req.body,
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    await syncAndSave(updated);
+    res.json({ message: "Updated", customer: updated });
+  } catch (err) {
+    res.status(500).json({ message: "Failed to update customer", error: err.message });
+  }
 };
 
 exports.delete = async (req, res) => {
   try {
+    const role = getRole(req);
+    if (role !== "admin") {
+      return res.status(403).json({ message: "Admins only" });
+    }
+
     const deleted = await Customer.findOneAndDelete({
-      customerId: req.params.customerId
+      customerId: req.params.customerId,
     });
 
     if (!deleted) {

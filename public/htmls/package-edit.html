@@ -12,6 +12,13 @@
     <a class="logo-wrap" href="dashboard.html">
       <img src="../images/HomLogo.png" class="logo">
     </a>
+    
+    <button class="hamburger-menu" aria-label="Toggle navigation menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
     <nav class="nav">
 
       <div class="nav-dropdown">
@@ -36,7 +43,7 @@
         <div class="nav-dropdown-menu">
           <a href="class-schedule.html">Class Schedule</a>
           <a href="class-checkin.html">Class Check-In</a>
-          <a href="class-records.html" class="active">Class Records</a>
+          <a href="class-records.html">Class Records</a>
         </div>
       </div>
 
@@ -48,6 +55,10 @@
         </div>
       </div>
 
+      <div id="nav-waiver-link">
+        <a href="waiver.html">Waiver</a>
+      </div>
+
       <a href="../index.html">Log Out</a>
     </nav>
   </aside>
@@ -56,9 +67,9 @@
     <div class="card card--wide">
       <h1 class="page-title">Edit Packages</h1>
 
-        <div class="btn-row" style="margin-bottom: 1rem;">
-          <button class="btn btn--primary" id="newPackageBtn">New Package</button>
-        </div>
+      <div class="btn-row" style="margin-bottom: 1rem;">
+        <button class="btn btn--primary" id="newPackageBtn">New Package</button>
+      </div>
 
       <table class="results-table" id="packageTable">
         <thead>
@@ -76,7 +87,6 @@
       </table>
     </div>
 
-    <!-- Edit Modal -->
     <div id="editModal" class="modal hidden">
       <div class="modal-content card">
         <h2>Edit Package</h2>
@@ -111,34 +121,6 @@
   </main>
 
   <script src="../js/packageEdit.js"></script>
-  <script>
-
-    async function protectStaffAdminPage() {
-      try {
-        const res = await fetch("/api/me");
-
-        if (!res.ok) {
-          window.location.href = "/index.html";
-          return;
-        }
-
-        const user = await res.json();
-
-        if (!["admin", "staff"].includes(user.role)) {
-          window.location.href = "/htmls/member-dashboard.html";
-        }
-      } catch (err) {
-        window.location.href = "/index.html";
-      }
-    }
-
-    protectStaffAdminPage();
-
-    document.querySelectorAll(".nav-dropdown-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        btn.parentElement.classList.toggle("open");
-      });
-    });
-  </script>
+  <script src="../js/sidebarRoleUI.js"></script>
 </body>
 </html>

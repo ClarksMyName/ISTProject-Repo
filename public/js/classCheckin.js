@@ -1,125 +1,172 @@
-// -----------------------------------------------------
-// GLOBALS
-// -----------------------------------------------------
 let selectedClass = null;
 let selectedInstructor = null;
+let currentRecord = null;
 let attendees = [];
 let currentUser = null;
 
-// -----------------------------------------------------
-// LOAD CURRENT USER
-// -----------------------------------------------------
+const DAYS = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+function parseTimeLabelToMinutes(label) {
+  const match = String(label).trim().match(/^(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
+  if (!match) return Number.POSITIVE_INFINITY;
+
+  let hour = parseInt(match[1], 10);
+  const minutes = parseInt(match[2] || "0", 10);
+  const period = match[3].toUpperCase();
+
+  if (period === "AM" && hour === 12) hour = 0;
+  if (period === "PM" && hour !== 12) hour += 12;
+
+  return hour * 60 + minutes;
+}
+
+function getTodayName() {
+  return DAYS[new Date().getDay()];
+}
+
+function getTodayDisplay() {
+  return new Date().toLocaleDateString();
+}
+
+function findAvailableClass(classes) {
+  const now = new Date();
+  const today = getTodayName();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const earliestAllowedStart = nowMinutes - 180;
+  const latestAllowedStart = nowMinutes + 60;
+
+  const todaysClasses = classes
+    .filter((cls) => cls.dayOfWeek === today)
+    .map((cls) => ({
+      ...cls,
+      startMinutes: parseTimeLabelToMinutes(cls.time),
+    }))
+    .filter(
+      (cls) =>
+        Number.isFinite(cls.startMinutes) &&
+        cls.startMinutes >= earliestAllowedStart &&
+        cls.startMinutes <= latestAllowedStart
+    )
+    .sort((a, b) => Math.abs(a.startMinutes - nowMinutes) - Math.abs(b.startMinutes - nowMinutes));
+
+  return todaysClasses[0] || null;
+}
+
+function getTodaysClasses(classes) {
+  const today = getTodayName();
+
+  return classes
+    .filter((cls) => cls.dayOfWeek === today)
+    .slice()
+    .sort((a, b) => parseTimeLabelToMinutes(a.time) - parseTimeLabelToMinutes(b.time));
+}
+
 async function loadCurrentUser() {
   try {
     const res = await fetch("/api/me");
-
     if (!res.ok) {
       window.location.href = "/index.html";
       return;
     }
-
     currentUser = await res.json();
   } catch (err) {
     window.location.href = "/index.html";
   }
 }
 
-// -----------------------------------------------------
-// LOAD CLASSES FOR DROPDOWN
-// -----------------------------------------------------
-async function loadClassesForDropdown() {
+async function fetchAllClasses() {
   const res = await fetch("/api/class/all");
-  const classes = await res.json();
+  return res.json();
+}
 
+async function fetchInstructorById(instructorId) {
+  try {
+    const res = await fetch(`/api/instructor/${instructorId}`);
+    if (!res.ok) {
+      return { instructorId };
+    }
+    return await res.json();
+  } catch (err) {
+    return { instructorId };
+  }
+}
+
+async function fetchTodayRecordByClass(classId) {
+  const res = await fetch(`/api/classRecord/today/${classId}`);
+  if (!res.ok) {
+    throw new Error("Could not load today's class record.");
+  }
+  return res.json();
+}
+
+async function loadClassesForDropdown(classes) {
   const select = document.getElementById("select_class");
   select.innerHTML = "";
 
-  const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const TIMES = [
-    "6AM", "7AM", "8AM", "9AM", "10AM", "11AM",
-    "12PM", "1PM", "2PM", "3PM", "4PM", "5PM", "6PM", "7PM"
-  ];
+  const todaysClasses = getTodaysClasses(classes);
 
-  classes.sort((a, b) => {
-    const dayDiff = DAYS.indexOf(a.dayOfWeek) - DAYS.indexOf(b.dayOfWeek);
-    if (dayDiff !== 0) return dayDiff;
-    return TIMES.indexOf(a.time) - TIMES.indexOf(b.time);
-  });
-
-  classes.forEach(c => {
+  if (todaysClasses.length === 0) {
     const opt = document.createElement("option");
-    opt.value = c.classId;
-    opt.textContent = `${c.dayOfWeek} ${c.time} – ${c.className}`;
+    opt.value = "";
+    opt.textContent = "No classes scheduled for today";
+    select.appendChild(opt);
+    return;
+  }
+
+  todaysClasses.forEach((cls) => {
+    const opt = document.createElement("option");
+    opt.value = cls.classId;
+    opt.textContent = `${cls.className}`;
     select.appendChild(opt);
   });
 }
 
-// -----------------------------------------------------
-// INSTRUCTOR SEARCH-AS-YOU-TYPE (MODAL)
-// -----------------------------------------------------
-async function searchInstructorsModal(query) {
-  const box = document.getElementById("selectInstructorResults");
+function renderCheckinHeader() {
+  document.getElementById("checkinTitle").textContent =
+    `${selectedClass.className} — ${getTodayDisplay()}`;
 
-  if (!query || query.trim() === "") {
-    box.classList.add("hidden");
-    return;
-  }
-
-  const res = await fetch(`/api/instructor/search?q=${encodeURIComponent(query)}`);
-  const results = await res.json();
-
-  box.innerHTML = "";
-
-  if (results.length === 0) {
-    box.innerHTML = "<div>No results</div>";
-  } else {
-    results.forEach(i => {
-      const div = document.createElement("div");
-      div.textContent = `${i.firstName} ${i.lastName} (${i.instructorId})`;
-
-      div.addEventListener("click", () => {
-        document.getElementById("select_instructor").value = i.instructorId;
-        selectedInstructor = i;
-        box.classList.add("hidden");
-      });
-
-      box.appendChild(div);
-    });
-  }
-
-  box.classList.remove("hidden");
+  document.getElementById("checkinInstructor").textContent =
+    `Instructor: ${
+      selectedInstructor?.firstName
+        ? `${selectedInstructor.firstName} ${selectedInstructor.lastName}`
+        : selectedClass.instructorId
+    }`;
 }
 
-document.getElementById("select_instructor").addEventListener("input", (e) => {
-  searchInstructorsModal(e.target.value);
-});
+function clearSearchBox() {
+  const input = document.getElementById("customerSearch");
+  const results = document.getElementById("customerResults");
 
-document.addEventListener("click", (e) => {
-  const box = document.getElementById("selectInstructorResults");
-  const input = document.getElementById("select_instructor");
+  input.value = "";
+  results.innerHTML = "";
+  results.classList.add("hidden");
+}
 
-  if (!box.contains(e.target) && e.target !== input) {
-    box.classList.add("hidden");
+async function loadExistingSession() {
+  currentRecord = await fetchTodayRecordByClass(selectedClass.classId);
+
+  if (currentRecord?.attendeeDetails?.length) {
+    attendees = currentRecord.attendeeDetails.map((customer) => ({
+      customerId: customer.customerId,
+      firstName: customer.firstName,
+      lastName: customer.lastName,
+    }));
+  } else {
+    attendees = [];
   }
-});
 
-// -----------------------------------------------------
-// START CHECK-IN BUTTON
-// -----------------------------------------------------
-document.getElementById("startCheckinBtn").addEventListener("click", async () => {
-  attendees = [];
-  selectedClass = null;
-  selectedInstructor = null;
+  renderAttendees();
+}
 
-  await loadClassesForDropdown();
-
-  document.getElementById("select_instructor").value = "";
-  document.getElementById("selectModal").classList.remove("hidden");
-});
-
-// -----------------------------------------------------
-// MEMBER SELF-CHECK-IN SETUP
-// -----------------------------------------------------
 async function setupMemberSelfCheckin() {
   const searchInput = document.getElementById("customerSearch");
   const resultsBox = document.getElementById("customerResults");
@@ -136,15 +183,12 @@ async function setupMemberSelfCheckin() {
   searchInput.value = currentUser.customerId || "";
   searchInput.readOnly = true;
   searchInput.disabled = true;
-  searchInput.placeholder = "Only your account can be checked in";
+  searchInput.placeholder = "You are checking in to the current available class";
   resultsBox.classList.add("hidden");
   resultsBox.innerHTML = "";
 
-  attendees = [];
-
   try {
     const res = await fetch(`/api/customer/${currentUser.customerId}`);
-
     if (!res.ok) {
       alert("Could not load your customer profile.");
       return;
@@ -157,45 +201,76 @@ async function setupMemberSelfCheckin() {
   }
 }
 
-// -----------------------------------------------------
-// CONTINUE BUTTON (AFTER SELECTING CLASS + INSTRUCTOR)
-// -----------------------------------------------------
+function openCheckinScreen() {
+  renderCheckinHeader();
+  document.getElementById("startScreen").classList.add("hidden");
+  document.getElementById("checkinScreen").classList.remove("hidden");
+  document.getElementById("selectModal").classList.add("hidden");
+}
+
+function resetCheckinScreen() {
+  attendees = [];
+  selectedClass = null;
+  selectedInstructor = null;
+  currentRecord = null;
+
+  const input = document.getElementById("customerSearch");
+  input.value = "";
+  input.readOnly = false;
+  input.disabled = false;
+  input.placeholder = "Type to search...";
+
+  document.getElementById("attendeeList").innerHTML = "";
+  document.getElementById("checkinScreen").classList.add("hidden");
+  document.getElementById("startScreen").classList.remove("hidden");
+}
+
+document.getElementById("startCheckinBtn").addEventListener("click", async () => {
+  attendees = [];
+  selectedClass = null;
+  selectedInstructor = null;
+  currentRecord = null;
+
+  const classes = await fetchAllClasses();
+
+  if (currentUser?.role === "member") {
+    const availableClass = findAvailableClass(classes);
+
+    if (!availableClass) {
+      alert("No class is currently available for customer self check-in.");
+      return;
+    }
+
+    selectedClass = availableClass;
+    selectedInstructor = await fetchInstructorById(selectedClass.instructorId);
+
+    openCheckinScreen();
+    await loadExistingSession();
+    await setupMemberSelfCheckin();
+    return;
+  }
+
+  await loadClassesForDropdown(classes);
+  document.getElementById("selectModal").classList.remove("hidden");
+});
+
 document.getElementById("continueBtn").addEventListener("click", async () => {
   const classId = document.getElementById("select_class").value;
-  const instructorId = document.getElementById("select_instructor").value;
 
-  if (!classId || !instructorId) {
-    alert("Please select both class and instructor.");
+  if (!classId) {
+    alert("Please select a class.");
     return;
   }
 
   const res = await fetch(`/api/class/${classId}`);
   selectedClass = await res.json();
+  selectedInstructor = await fetchInstructorById(selectedClass.instructorId);
 
-  if (!selectedInstructor || selectedInstructor.instructorId !== instructorId) {
-    selectedInstructor = { instructorId };
-  }
-
-  document.getElementById("checkinTitle").textContent =
-    `${selectedClass.dayOfWeek} ${selectedClass.time} – ${selectedClass.className}`;
-
-  document.getElementById("checkinInstructor").textContent =
-    `Instructor: ${
-      selectedInstructor.firstName
-        ? `${selectedInstructor.firstName} ${selectedInstructor.lastName}`
-        : instructorId
-    }`;
-
-  document.getElementById("startScreen").classList.add("hidden");
-  document.getElementById("checkinScreen").classList.remove("hidden");
-  document.getElementById("selectModal").classList.add("hidden");
-
+  openCheckinScreen();
+  await loadExistingSession();
   await setupMemberSelfCheckin();
 });
 
-// -----------------------------------------------------
-// CUSTOMER SEARCH-AS-YOU-TYPE
-// -----------------------------------------------------
 async function searchCustomers(query) {
   const box = document.getElementById("customerResults");
 
@@ -217,14 +292,13 @@ async function searchCustomers(query) {
   if (results.length === 0) {
     box.innerHTML = "<div>No results</div>";
   } else {
-    results.forEach(c => {
+    results.forEach((customer) => {
       const div = document.createElement("div");
-      div.textContent = `${c.firstName} ${c.lastName} (${c.customerId})`;
+      div.textContent = `${customer.firstName} ${customer.lastName} (${customer.customerId})`;
 
       div.addEventListener("click", () => {
-        addAttendee(c);
-        box.classList.add("hidden");
-        document.getElementById("customerSearch").value = "";
+        addAttendee(customer);
+        clearSearchBox();
       });
 
       box.appendChild(div);
@@ -247,16 +321,13 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// -----------------------------------------------------
-// ADD ATTENDEE (PREVENT DUPLICATES)
-// -----------------------------------------------------
 function addAttendee(customer) {
   if (currentUser && currentUser.role === "member" && customer.customerId !== currentUser.customerId) {
     alert("Members can only check in themselves.");
     return;
   }
 
-  if (attendees.some(a => a.customerId === customer.customerId)) {
+  if (attendees.some((a) => a.customerId === customer.customerId)) {
     return;
   }
 
@@ -264,25 +335,37 @@ function addAttendee(customer) {
   renderAttendees();
 }
 
-// -----------------------------------------------------
-// RENDER ATTENDEE LIST
-// -----------------------------------------------------
 function renderAttendees() {
   const list = document.getElementById("attendeeList");
   list.innerHTML = "";
 
-  attendees.forEach(c => {
+  attendees.forEach((customer) => {
     const li = document.createElement("li");
-    li.textContent = `${c.firstName} ${c.lastName} (${c.customerId})`;
+    li.style.display = "flex";
+    li.style.alignItems = "center";
+    li.style.justifyContent = "space-between";
+    li.style.gap = "10px";
+    li.style.marginBottom = "8px";
+
+    const nameSpan = document.createElement("span");
+    nameSpan.textContent = `${customer.firstName} ${customer.lastName} (${customer.customerId})`;
+    nameSpan.style.flex = "1";
+
+    li.appendChild(nameSpan);
 
     if (!currentUser || currentUser.role !== "member") {
       const removeBtn = document.createElement("button");
       removeBtn.textContent = "Remove";
       removeBtn.className = "btn btn--danger btn--small";
-      removeBtn.style.marginLeft = "1rem";
+
+      removeBtn.style.padding = "6px 10px";
+      removeBtn.style.fontSize = "0.85rem";
+      removeBtn.style.lineHeight = "1";
+      removeBtn.style.minWidth = "70px";
+      removeBtn.style.marginLeft = "8px";
 
       removeBtn.addEventListener("click", () => {
-        attendees = attendees.filter(a => a.customerId !== c.customerId);
+        attendees = attendees.filter((a) => a.customerId !== customer.customerId);
         renderAttendees();
       });
 
@@ -293,9 +376,6 @@ function renderAttendees() {
   });
 }
 
-// -----------------------------------------------------
-// SUBMIT CLASS RECORD
-// -----------------------------------------------------
 document.getElementById("submitRecordBtn").addEventListener("click", async () => {
   if (!selectedClass || !selectedInstructor) {
     alert("Missing class or instructor.");
@@ -307,78 +387,62 @@ document.getElementById("submitRecordBtn").addEventListener("click", async () =>
     return;
   }
 
-  if (
-    currentUser &&
-    currentUser.role === "member" &&
-    (attendees.length !== 1 || attendees[0].customerId !== currentUser.customerId)
-  ) {
-    alert("Members can only check in themselves.");
-    return;
+  let attendeeIdsToSubmit;
+
+  if (currentUser && currentUser.role === "member") {
+    const selfInList = attendees.some((a) => a.customerId === currentUser.customerId);
+
+    if (!selfInList) {
+      alert("Members can only check in themselves.");
+      return;
+    }
+
+    attendeeIdsToSubmit = [currentUser.customerId];
+  } else {
+    attendeeIdsToSubmit = attendees.map((a) => a.customerId);
   }
 
-  const idRes = await fetch("/api/classRecord/getNextId");
-  const { recordId } = await idRes.json();
-
-  const today = new Date().toISOString().split("T")[0];
-
   const record = {
-    recordId,
     classId: selectedClass.classId,
-    instructorId: selectedInstructor.instructorId,
-    date: today,
-    attendees: attendees.map(a => a.customerId)
+    className: selectedClass.className,
+    classTime: selectedClass.time,
+    instructorId: selectedInstructor.instructorId || selectedClass.instructorId,
+    attendees: attendeeIdsToSubmit,
   };
 
   const res = await fetch("/api/classRecord/add", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(record)
+    body: JSON.stringify(record),
   });
 
+  const result = await res.json().catch(() => ({}));
+
   if (res.ok) {
-    alert("Class record submitted!");
+    currentRecord = result.record || null;
 
-    attendees = [];
-    selectedClass = null;
-    selectedInstructor = null;
+    if (currentRecord?.attendeeDetails) {
+      attendees = currentRecord.attendeeDetails.map((customer) => ({
+        customerId: customer.customerId,
+        firstName: customer.firstName,
+        lastName: customer.lastName,
+      }));
+      renderAttendees();
+    }
 
-    document.getElementById("customerSearch").value = "";
-    document.getElementById("customerSearch").readOnly = false;
-    document.getElementById("customerSearch").disabled = false;
-    document.getElementById("customerSearch").placeholder = "Type to search...";
-
-    document.getElementById("checkinScreen").classList.add("hidden");
-    document.getElementById("startScreen").classList.remove("hidden");
+    clearSearchBox();
+    alert(result.message || "Class check-in saved.");
   } else {
-    alert("Failed to submit record.");
+    alert(result.message || "Failed to submit record.");
   }
 });
 
-// -----------------------------------------------------
-// CANCEL CHECK-IN
-// -----------------------------------------------------
 document.getElementById("cancelCheckinBtn").addEventListener("click", () => {
-  attendees = [];
-  selectedClass = null;
-  selectedInstructor = null;
-
-  document.getElementById("customerSearch").value = "";
-  document.getElementById("customerSearch").readOnly = false;
-  document.getElementById("customerSearch").disabled = false;
-  document.getElementById("customerSearch").placeholder = "Type to search...";
-
-  document.getElementById("checkinScreen").classList.add("hidden");
-  document.getElementById("startScreen").classList.remove("hidden");
+  resetCheckinScreen();
 });
 
-// -----------------------------------------------------
-// CLOSE SELECT MODAL
-// -----------------------------------------------------
 document.getElementById("closeSelectModal").addEventListener("click", () => {
   document.getElementById("selectModal").classList.add("hidden");
 });
 
-// -----------------------------------------------------
-// INITIAL LOAD
-// -----------------------------------------------------
 loadCurrentUser();

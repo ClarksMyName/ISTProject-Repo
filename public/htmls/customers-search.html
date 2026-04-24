@@ -5,6 +5,269 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Search Customers</title>
   <link rel="stylesheet" href="../css/style.css">
+  <style>
+    main.customer-search-main {
+      width: calc(100vw - 210px);
+      max-width: none;
+      margin: 0;
+      padding: 1.25rem 1rem 1.25rem 0.75rem;
+      box-sizing: border-box;
+      display: block;
+    }
+
+    .customerSearchContainer {
+      width: 100%;
+      max-width: none;
+      margin: 0;
+    }
+
+    .customerSearchContainer .card,
+    .customerSearchContainer .card--wide {
+      width: 100%;
+      max-width: none;
+      box-sizing: border-box;
+    }
+
+    .search-bar-container {
+      width: 100%;
+      margin-bottom: 0.7rem;
+    }
+
+    .search-input {
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .results-table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding-bottom: 0.2rem;
+    }
+
+    .results-table {
+      width: 100%;
+      min-width: 1030px;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    .results-table th,
+    .results-table td {
+      padding: 0.5rem 0.35rem;
+      text-align: left;
+      vertical-align: middle;
+      font-size: 0.88rem;
+      line-height: 1.08;
+    }
+
+    .results-table th {
+      white-space: nowrap;
+    }
+
+    .stacked-header {
+      white-space: normal !important;
+      line-height: 1.05;
+      text-align: center;
+    }
+
+    .results-table th:nth-child(1),
+    .results-table td:nth-child(1) {
+      width: 7%;
+    }
+
+    .results-table th:nth-child(2),
+    .results-table td:nth-child(2) {
+      width: 12%;
+    }
+
+    .results-table th:nth-child(3),
+    .results-table td:nth-child(3) {
+      width: 14%;
+    }
+
+    .results-table th:nth-child(4),
+    .results-table td:nth-child(4) {
+      width: 13%;
+    }
+
+    .results-table th:nth-child(5),
+    .results-table td:nth-child(5) {
+      width: 8%;
+      text-align: center;
+    }
+
+    .results-table th:nth-child(6),
+    .results-table td:nth-child(6) {
+      width: 8%;
+      text-align: center;
+    }
+
+    .results-table th:nth-child(7),
+    .results-table td:nth-child(7) {
+      width: 11%;
+      text-align: center;
+      padding-right: 0.6rem;
+    }
+
+    .results-table th:nth-child(8),
+    .results-table td:nth-child(8) {
+      width: 15%;
+      padding-left: 0.6rem;
+    }
+
+    .customer-id-cell,
+    .phone-cell,
+    .balance-cell {
+      white-space: nowrap;
+    }
+
+    .name-cell {
+      white-space: normal;
+    }
+
+    .name-cell div {
+      line-height: 1.05;
+    }
+
+    .email-cell {
+      white-space: normal;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      line-height: 1.05;
+    }
+
+    .status-badge,
+    .waiver-badge {
+      display: inline-block;
+      padding: 0.22rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      white-space: nowrap;
+      line-height: 1.05;
+    }
+
+    .status-badge--active,
+    .waiver-badge--complete {
+      background: #e8f7ed;
+      color: #1f6f3b;
+      border: 1px solid #b9e1c4;
+    }
+
+    .status-badge--inactive {
+      background: #fdecec;
+      color: #8a1f1f;
+      border: 1px solid #f2b9b9;
+    }
+
+    .status-badge--none,
+    .waiver-badge--incomplete {
+      background: #f3f3f3;
+      color: #666;
+      border: 1px solid #ddd;
+    }
+
+    .actions-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+      align-items: stretch;
+    }
+
+    .actions-cell .btn {
+      width: 100%;
+      min-width: 0;
+      padding: 0.28rem 0.35rem;
+      font-size: 0.78rem;
+      line-height: 1;
+      text-align: center;
+    }
+
+    @media (max-width: 1300px) {
+      main.customer-search-main {
+        width: calc(100vw - 210px);
+        padding: 1rem 0.85rem 1rem 0.6rem;
+      }
+
+      .results-table {
+        min-width: 1000px;
+      }
+
+      .results-table th,
+      .results-table td {
+        font-size: 0.82rem;
+        padding: 0.45rem 0.3rem;
+      }
+
+      .actions-cell .btn {
+        font-size: 0.73rem;
+        padding: 0.25rem 0.3rem;
+      }
+
+      .status-badge,
+      .waiver-badge {
+        font-size: 0.72rem;
+      }
+    }
+
+    @media (max-width: 768px) {
+      main.customer-search-main {
+        width: 100%;
+        padding: 1rem 0.75rem;
+      }
+
+      .results-table {
+        min-width: 100%;
+        font-size: 0.75rem;
+      }
+
+      .results-table th,
+      .results-table td {
+        padding: 0.4rem 0.25rem;
+        font-size: 0.75rem;
+      }
+
+      .actions-cell .btn {
+        font-size: 0.65rem;
+        padding: 0.2rem 0.25rem;
+      }
+
+      .status-badge,
+      .waiver-badge {
+        font-size: 0.65rem;
+        padding: 0.15rem 0.35rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      main.customer-search-main {
+        padding: 0.75rem 0.5rem;
+      }
+
+      .results-table {
+        min-width: 100%;
+        font-size: 0.7rem;
+      }
+
+      .results-table th,
+      .results-table td {
+        padding: 0.3rem 0.15rem;
+        font-size: 0.7rem;
+      }
+
+      .actions-cell .btn {
+        font-size: 0.6rem;
+        padding: 0.15rem 0.2rem;
+      }
+
+      .status-badge,
+      .waiver-badge {
+        font-size: 0.6rem;
+        padding: 0.1rem 0.25rem;
+      }
+    }
+  </style>
 </head>
 
 <body class="layout--sidebar">
@@ -13,6 +276,13 @@
     <a class="logo-wrap" href="dashboard.html">
       <img src="../images/HomLogo.png" class="logo">
     </a>
+    
+    <button class="hamburger-menu" aria-label="Toggle navigation menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
     <nav class="nav">
 
       <div class="nav-dropdown">
@@ -37,7 +307,7 @@
         <div class="nav-dropdown-menu">
           <a href="class-schedule.html">Class Schedule</a>
           <a href="class-checkin.html">Class Check-In</a>
-          <a href="class-records.html" class="active">Class Records</a>
+          <a href="class-records.html">Class Records</a>
         </div>
       </div>
 
@@ -49,33 +319,45 @@
         </div>
       </div>
 
+      <div id="nav-waiver-link">
+        <a href="waiver.html">Waiver</a>
+      </div>
+
       <a href="../index.html">Log Out</a>
     </nav>
   </aside>
 
-  <main class="layout--center">
+  <main class="layout--center customer-search-main">
     <div class="customerSearchContainer">
-      <div class="card">
+      <div class="card card--wide">
         <h1 class="page-title">Search Customers</h1>
 
         <div class="search-bar-container">
-          <input type="text" id="searchInput" class="search-input"
-                 placeholder="Search by name, email, or phone">
+          <input
+            type="text"
+            id="searchInput"
+            class="search-input"
+            placeholder="Search by name, email, or phone"
+          >
         </div>
 
-        <table class="results-table" id="resultsTable">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Name</th>
-              <th>Email</th>
-              <th>Phone</th>
-              <th>Class Balance</th>
-              <th>Edit</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
+        <div class="results-table-wrapper">
+          <table class="results-table" id="resultsTable">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th class="stacked-header">Class<br>Balance</th>
+                <th>Status</th>
+                <th>Waiver</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -111,6 +393,7 @@
             <label>User Role</label>
             <select id="edit_role">
               <option value="member">Member</option>
+              <option value="instructor">Instructor</option>
               <option value="staff">Staff</option>
               <option value="admin">Admin</option>
             </select>
@@ -124,34 +407,6 @@
   </main>
 
   <script src="../js/customerSearch.js"></script>
-  <script>
-
-    async function protectStaffAdminPage() {
-      try {
-        const res = await fetch("/api/me");
-
-        if (!res.ok) {
-          window.location.href = "/index.html";
-          return;
-        }
-
-        const user = await res.json();
-
-        if (!["admin", "staff"].includes(user.role)) {
-          window.location.href = "/htmls/member-dashboard.html";
-        }
-      } catch (err) {
-        window.location.href = "/index.html";
-      }
-    }
-
-    protectStaffAdminPage();  
-
-    document.querySelectorAll(".nav-dropdown-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        btn.parentElement.classList.toggle("open");
-      });
-    });
-  </script>
+  <script src="../js/sidebarRoleUI.js"></script>
 </body>
 </html>

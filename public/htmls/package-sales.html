@@ -12,6 +12,13 @@
     <a class="logo-wrap" href="dashboard.html">
       <img src="../images/HomLogo.png" class="logo">
     </a>
+    
+    <button class="hamburger-menu" aria-label="Toggle navigation menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
     <nav class="nav">
 
       <div class="nav-dropdown">
@@ -36,7 +43,7 @@
         <div class="nav-dropdown-menu">
           <a href="class-schedule.html">Class Schedule</a>
           <a href="class-checkin.html">Class Check-In</a>
-          <a href="class-records.html" class="active">Class Records</a>
+          <a href="class-records.html">Class Records</a>
         </div>
       </div>
 
@@ -46,6 +53,10 @@
           <a href="customers.html">Add New Customer</a>
           <a href="customers-search.html">Search/Edit Customer</a>
         </div>
+      </div>
+
+      <div id="nav-waiver-link">
+        <a href="waiver.html">Waiver</a>
       </div>
 
       <a href="../index.html">Log Out</a>
@@ -61,8 +72,10 @@
           <tr>
             <th>Sale ID</th>
             <th>Customer ID</th>
-            <th>Package ID</th>
+            <th>Package</th>
+            <th>Type</th>
             <th>Date</th>
+            <th>Expires</th>
             <th>Price Paid</th>
           </tr>
         </thead>
@@ -72,34 +85,6 @@
   </main>
 
   <script src="../js/packageSales.js"></script>
-  <script>
-
-    async function protectStaffAdminPage() {
-      try {
-        const res = await fetch("/api/me");
-
-        if (!res.ok) {
-          window.location.href = "/index.html";
-          return;
-        }
-
-        const user = await res.json();
-
-        if (!["admin", "staff"].includes(user.role)) {
-          window.location.href = "/htmls/member-dashboard.html";
-        }
-      } catch (err) {
-        window.location.href = "/index.html";
-      }
-    }
-
-    protectStaffAdminPage();
-
-    document.querySelectorAll(".nav-dropdown-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        btn.parentElement.classList.toggle("open");
-      });
-    });
-  </script>
+  <script src="../js/sidebarRoleUI.js"></script>
 </body>
 </html>

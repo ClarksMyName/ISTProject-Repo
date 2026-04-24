@@ -1,21 +1,25 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customers</title>
-    <link rel="stylesheet" href="../css/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customers</title>
+  <link rel="stylesheet" href="../css/style.css">
 </head>
-  
 
-    <body class="layout--sidebar">
-  <!-- Re-use the same sidebar -->
+<body class="layout--sidebar">
   <aside class="sidebar">
     <a class="logo-wrap" href="dashboard.html">
       <img src="../images/HomLogo.png" alt="YogaTrack Logo" class="logo">
     </a>
-    <nav class="nav">
 
+    <button class="hamburger-menu" aria-label="Toggle navigation menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <nav class="nav">
       <div class="nav-dropdown">
         <button class="nav-dropdown-btn">Instructors ▾</button>
         <div class="nav-dropdown-menu">
@@ -38,7 +42,7 @@
         <div class="nav-dropdown-menu">
           <a href="class-schedule.html">Class Schedule</a>
           <a href="class-checkin.html">Class Check-In</a>
-          <a href="class-records.html" class="active">Class Records</a>
+          <a href="class-records.html">Class Records</a>
         </div>
       </div>
 
@@ -50,99 +54,66 @@
         </div>
       </div>
 
+      <div id="nav-waiver-link">
+        <a href="waiver.html">Waiver</a>
+      </div>
+
       <a href="../index.html">Log Out</a>
     </nav>
   </aside>
 
-  <!-- Customer form -->
   <main class="layout--center">
-     <div class="customerInfoContainer">
-            <h1>Enter Customer Info</h1>
-            <form class="card" id="customerForm">
-                <label class="custinfolabel" for="firstName">First:</label>
-                <input type="text" id="firstName" name="firstName" required>
+    <div class="customerInfoContainer">
+      <h1>Enter Customer Info</h1>
 
-                <label class="custinfolabel" for="lastName">Last:</label>
-                <input type="text" id="lastName" name="lastName" required>
+      <form class="card" id="customerForm">
+        <label class="custinfolabel" for="firstName">First:</label>
+        <input type="text" id="firstName" name="firstName" required>
 
-                <label class="custinfolabel" for="email">Email:</label>
-                <input type="email" id="email" name="email" required>
+        <label class="custinfolabel" for="lastName">Last:</label>
+        <input type="text" id="lastName" name="lastName" required>
 
-                <label class="custinfolabel" for="phone">Phone Number:</label>
-                <input type="tel" id="phone" name="phone" required>
+        <label class="custinfolabel" for="email">Email:</label>
+        <input type="email" id="email" name="email" required>
 
-                <label class="custinfolabel" for="address">Address:</label>
-                <textarea type="text" id="address" name="address"></textarea>
+        <label class="custinfolabel" for="phone">Phone Number:</label>
+        <input type="tel" id="phone" name="phone" required>
 
-                <label class="custinfolabel" for="classBalance">Class Balance:</label>
-                <input type="Number" id="classBalance" name="classBalance">
+        <label class="custinfolabel" for="address">Address:</label>
+        <textarea id="address" name="address"></textarea>
 
-                <label class="custinfolabel" for="senior">Customer is a senior</label>
-                <input type="checkbox" id="senior" name="senior">
+        <label class="custinfolabel" for="classBalance">Class Balance:</label>
+        <input type="number" id="classBalance" name="classBalance">
 
-                <div id="roleFieldWrapper" style="display:none;">
-                  <label class="custinfolabel" for="role">User Role:</label>
-                    <select id="role" name="role">
-                      <option value="member">Member</option>
-                      <option value="staff">Staff</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                </div>
+        <label class="custinfolabel" for="senior">Customer is a senior</label>
+        <input type="checkbox" id="senior" name="senior">
 
-                <button id="customersubmit" class="btn" type="submit">Submit</button>
-              </form>
+        <div id="roleFieldWrapper" style="display:none;">
+          <label class="custinfolabel" for="role">User Role:</label>
+          <select id="role" name="role">
+            <option value="member">Member</option>
+            <option value="instructor">Instructor</option>
+            <option value="staff">Staff</option>
+            <option value="admin">Admin</option>
+          </select>
         </div>
+
+        <div id="accountFieldsWrapper" style="display:none; margin-top: 1rem;">
+          <label class="custinfolabel" for="username">Username:</label>
+          <input type="text" id="username" name="username" autocomplete="off">
+
+          <label class="custinfolabel" for="password">Temporary Password:</label>
+          <input type="password" id="password" name="password" minlength="8">
+
+          <small>Create login credentials for admin, staff, instructor, and customer accounts.</small>
+        </div>
+
+        <button id="customersubmit" class="btn" type="submit">Submit</button>
+      </form>
+    </div>
   </main>
 
-<script src="../js/customer.js"></script>
-<script>
-async function showRoleForAdmins() {
-    try {
-      const res = await fetch("/api/me");
-      if (!res.ok) return;
-
-      const user = await res.json();
-      if (user.role === "admin") {
-        const roleField = document.getElementById("roleFieldWrapper");
-        if (roleField) {
-          roleField.style.display = "block";
-        }
-      }
-    } catch (err) {
-      console.error("Could not load current user:", err);
-    }
-  }
-
-  showRoleForAdmins();
-
-  async function protectStaffAdminPage() {
-      try {
-        const res = await fetch("/api/me");
-
-        if (!res.ok) {
-          window.location.href = "/index.html";
-          return;
-        }
-
-        const user = await res.json();
-
-        if (!["admin", "staff"].includes(user.role)) {
-          window.location.href = "/htmls/member-dashboard.html";
-        }
-      } catch (err) {
-        window.location.href = "/index.html";
-      }
-    }
-
-    protectStaffAdminPage();
-
-  document.querySelectorAll(".nav-dropdown-btn").forEach(btn => {
-    btn.addEventListener("click", (e) => {
-      e.preventDefault();
-      btn.parentElement.classList.toggle("open");
-    });
-  });
-</script>
+  <script src="../js/customer.js"></script>
+  <script src="../js/sidebarRoleUI.js"></script>
 </body>
 </html>
-

@@ -14,6 +14,12 @@
       <img src="../images/HomLogo.png" class="logo">
     </a>
 
+    <button class="hamburger-menu" aria-label="Toggle navigation menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
     <nav class="nav">
 
       <div class="nav-dropdown">
@@ -38,7 +44,7 @@
         <div class="nav-dropdown-menu">
           <a href="class-schedule.html">Class Schedule</a>
           <a href="class-checkin.html">Class Check-In</a>
-          <a href="class-records.html" class="active">Class Records</a>
+          <a href="class-records.html">Class Records</a>
         </div>
       </div>
 
@@ -48,6 +54,10 @@
           <a href="customers.html">Add New Customer</a>
           <a href="customers-search.html">Search/Edit Customer</a>
         </div>
+      </div>
+
+      <div id="nav-waiver-link">
+        <a href="waiver.html">Waiver</a>
       </div>
 
       <a href="../index.html">Log Out</a>
@@ -74,14 +84,8 @@
   </main>
 
   <script src="../js/classRecords.js"></script>
+  <script src="../js/sidebarRoleUI.js"></script>
 
-  <script>
-    document.querySelectorAll(".nav-dropdown-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        btn.parentElement.classList.toggle("open");
-      });
-    });
-  </script>
 
 </body>
 </html>

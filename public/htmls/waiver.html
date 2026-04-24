@@ -62,6 +62,12 @@
       <img src="../images/HomLogo.png" alt="Yoga H'om Logo" class="logo">
     </a>
 
+    <button class="hamburger-menu" aria-label="Toggle navigation menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
     <nav class="nav">
       <div class="nav-dropdown" id="nav-classes">
         <button class="nav-dropdown-btn">Classes ▾</button>
@@ -103,7 +109,10 @@
         </div>
       </div>
 
-      <a href="waiver.html">Waiver</a>
+      <div id="nav-waiver-link">
+        <a href="waiver.html">Waiver</a>
+      </div>
+
       <a href="../index.html">Log Out</a>
     </nav>
   </aside>
@@ -155,8 +164,6 @@
   </main>
 
   <script>
-    let currentUser = null;
-
     function formatDate(dateValue) {
       return new Date(dateValue).toLocaleDateString();
     }
@@ -211,38 +218,6 @@
       }
     }
 
-    async function applyRoleUI() {
-      try {
-        const res = await fetch("/api/me");
-
-        if (!res.ok) {
-          window.location.href = "/index.html";
-          return;
-        }
-
-        currentUser = await res.json();
-
-        if (currentUser.role === "member") {
-          const hideIds = ["nav-instructors", "nav-packages", "nav-customers"];
-          hideIds.forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.style.display = "none";
-          });
-
-          const classesMenu = document.getElementById("nav-classes-menu");
-          if (classesMenu) {
-            classesMenu.innerHTML = `
-              <a href="class-checkin.html">Class Check-In</a>
-            `;
-          }
-        }
-
-        await loadExistingWaiver();
-      } catch (err) {
-        window.location.href = "/index.html";
-      }
-    }
-
     document.getElementById("waiverForm").addEventListener("submit", async function (e) {
       e.preventDefault();
       hideError();
@@ -284,13 +259,8 @@
       }
     });
 
-    document.querySelectorAll(".nav-dropdown-btn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        btn.parentElement.classList.toggle("open");
-      });
-    });
-
-    applyRoleUI();
+    loadExistingWaiver();
   </script>
+  <script src="../js/sidebarRoleUI.js"></script>
 </body>
 </html>
